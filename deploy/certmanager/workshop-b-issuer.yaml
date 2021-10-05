@@ -1,0 +1,17 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-fcarta-workshop-b
+  namespace: cert-manager
+spec:
+  acme:
+    # Not using staging here so demo can have valid cert
+    # server: https://acme-staging-v02.api.letsencrypt.org/directory
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: fcarta@vmware.com
+    privateKeySecretRef:
+      name: letsencrypt-fcarta-workshop-b
+    solvers:
+    - http01:
+        ingress:
+          class: contour

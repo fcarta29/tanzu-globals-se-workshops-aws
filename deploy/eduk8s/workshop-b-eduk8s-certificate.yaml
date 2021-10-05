@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: eduk8s-certificate
+  namespace: eduk8s
+spec:
+  commonName: test.workshop.frankcarta.com
+  dnsNames: 
+  - test.workshop.frankcarta.com
+  - "*.test.frankcarta.com"
+  issuerRef:
+    name: letsencrypt-fcarta-workshop-b
+    kind: ClusterIssuer
+  secretName: eduk8s-cert-secret

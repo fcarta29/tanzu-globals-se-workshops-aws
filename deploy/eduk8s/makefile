@@ -1,0 +1,30 @@
+build:
+	TAG=`git rev-parse --short=8 HEAD`; \
+	docker build --rm -f build-eduk8s-tanzu-workshop.dockerfile -t harbor.tanzu.frankcarta.com/builders/eduk8s-tanzu-workshop:$$TAG .; \
+	docker tag harbor.tanzu.frankcarta.com/builders/eduk8s-tanzu-workshop:$$TAG harbor.tanzu.frankcarta.com/builders/eduk8s-tanzu-workshop:latest
+
+clean:
+	docker stop build-eduk8s-tanzu-workshop
+	docker rm build-eduk8s-tanzu-workshop
+
+rebuild: clean build
+
+run:
+	docker run --name build-eduk8s-tanzu-workshop -v $$PWD/deploy:/deploy -v $$PWD/config/kube.conf:/root/.kube/config -td harbor.tanzu.frankcarta.com/builders/eduk8s-tanzu-workshop:latest
+	docker exec -it build-eduk8s-tanzu-workshop bash -l
+demo: 
+	docker run --name build-eduk8s-tanzu-workshop -p 8080-8090:8080-8090 -v $$PWD/deploy:/deploy -v $$PWD/config/kube.conf:/root/.kube/config -td harbor.tanzu.frankcarta.com/builders/eduk8s-tanzu-workshop:latest
+	docker exec -it build-eduk8s-tanzu-workshop bash -l
+join:
+	docker exec -it build-eduk8s-tanzu-workshop bash -l
+start:
+	docker start build-eduk8s-tanzu-workshop
+stop:
+	docker stop build-eduk8s-tanzu-workshop
+
+push:
+	TAG=`git rev-parse --short=8 HEAD`; \
+	docker push harbor.tanzu.frankcarta.com/builders/eduk8s-tanzu-workshop:$$TAG; \
+	docker push harbor.tanzu.frankcarta.com/builders/eduk8s-tanzu-workshop:latest
+
+default: build
