@@ -10,10 +10,7 @@ clean:
 rebuild: clean build
 
 run:
-	docker run --name build-eduk8s-tanzu-workshop -v $$PWD/deploy:/deploy -v $$PWD/config/kube.conf:/root/.kube/config -td harbor.tanzu.frankcarta.com/builders/eduk8s-tanzu-workshop:latest
-	docker exec -it build-eduk8s-tanzu-workshop bash -l
-demo: 
-	docker run --name build-eduk8s-tanzu-workshop -p 8080-8090:8080-8090 -v $$PWD/deploy:/deploy -v $$PWD/config/kube.conf:/root/.kube/config -td harbor.tanzu.frankcarta.com/builders/eduk8s-tanzu-workshop:latest
+	docker run --name build-eduk8s-tanzu-workshop -td harbor.tanzu.frankcarta.com/builders/eduk8s-tanzu-workshop:latest
 	docker exec -it build-eduk8s-tanzu-workshop bash -l
 join:
 	docker exec -it build-eduk8s-tanzu-workshop bash -l
