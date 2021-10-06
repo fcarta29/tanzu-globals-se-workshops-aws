@@ -15,7 +15,8 @@ spec:
   - kubernetes
   content:
     #image: quay.io/eduk8s-labs/lab-k8s-fundamentals:master
-    image: harbor.tanzu.frankcarta.com/builders/eduk8s-tanzu-workshop:latest
+    #image: harbor.tanzu.frankcarta.com/builders/eduk8s-tanzu-workshop:latest
+    image: fcarta29/eduk8s-tanzu-workshop:latest
     files: github.com/eduk8s-labs/lab-k8s-fundamentals
   session:
     namespaces:
