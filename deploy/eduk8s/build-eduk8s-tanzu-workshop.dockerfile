@@ -16,7 +16,7 @@ ENV TANZU_CLI_VERSION=v1.3.1
 
 # Install System libraries
 RUN echo "Installing System Libraries" \
-    && dnf install -y bash-completion tree git-all
+    && dnf install -y bash-completion tree git-all moreutils
 
 # Install Tanzu CLI
 COPY bin/tanzu-cli-bundle-${TANZU_CLI_VERSION}-linux-amd64.tar .
