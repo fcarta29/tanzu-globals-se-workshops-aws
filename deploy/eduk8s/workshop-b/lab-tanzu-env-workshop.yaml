@@ -7,7 +7,7 @@ spec:
   content:
     files: github.com/fcarta29/tanzu-advanced-poc
     image: fcarta29/eduk8s-tanzu-workshop:latest
-  description: An workshop env to explore Tanzu
+  description: An workshop to explore Tanzu Advanced
   difficulty: intermediate
   duration: 120m
   session:
@@ -35,6 +35,6 @@ spec:
         namespace: $(workshop_namespace)
   tags:
   - containers
-  title: Tanzu Environment
+  title: Tanzu Advanced Workshop
   url: https://github.com/fcarta29/tanzu-advanced-poc
   vendor: eduk8s.io
