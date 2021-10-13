@@ -15,5 +15,5 @@ spec:
       maximum: 5
     title: Tanzu Workshop Portal
   workshops:
-  - name: lab-k8s-fundamentals
+  #- name: lab-k8s-fundamentals
   - name: lab-tanzu-env
