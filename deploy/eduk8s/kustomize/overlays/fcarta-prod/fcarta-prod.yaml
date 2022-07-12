@@ -7,4 +7,3 @@ spec:
     password: "VMware1!"
   workshops:
   - name: lab-tanzu-env-workshop
-  - name: madeup
