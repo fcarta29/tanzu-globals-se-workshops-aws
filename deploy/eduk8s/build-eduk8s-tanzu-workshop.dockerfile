@@ -172,4 +172,4 @@ RUN mv workshop /opt/workshop
 RUN fix-permissions /home/eduk8s
 
 # Leave Container Running for SSH Access - SHOULD REMOVE
-ENTRYPOINT ["tail", "-f", "/dev/null"]
+#ENTRYPOINT ["tail", "-f", "/dev/null"]
