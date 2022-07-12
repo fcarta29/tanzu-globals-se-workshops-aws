@@ -1,42 +1,95 @@
-FROM quay.io/eduk8s/base-environment:master
+FROM quay.io/eduk8s/base-environment:master as base
 LABEL maintainer="Frank Carta <fcarta@vmware.com>"
 
 USER root
 
 RUN HOME=/root
 
-ENV KUBECTL_VERSION=v1.19.6
-ENV ARGOCD_CLI_VERSION=v1.7.7
-ENV ARGOCD_VERSION=v2.0.1
-ENV KPACK_VERSION=0.3.1
-ENV ISTIO_VERSION=1.7.4
-ENV TKN_VERSION=0.17.2
-ENV KPDEMO_VERSION=v0.3.0
-ENV TANZU_CLI_VERSION=v1.3.1
+# Install System libraries
+#RUN echo "Installing System Libraries" \
+ #   && apt-get update \
+ #   && apt-get install -y build-essential python3.6 python3-pip python3-dev groff bash-completion git curl unzip wget findutils jq vim tree docker.io moreutils
 
 # Install System libraries
 RUN echo "Installing System Libraries" \
-    && dnf install -y bash-completion tree git-all moreutils
+    && dnf install -y bash-completion tree git-all moreutils wget curl findutils jq vim moreutils
 
-# Install Tanzu CLI
-COPY bin/tanzu-cli-bundle-${TANZU_CLI_VERSION}-linux-amd64.tar .
-RUN echo "Installing Tanzu CLI" \
-    && mkdir -p tanzu \
-    && tar xvf tanzu-cli-bundle-${TANZU_CLI_VERSION}-linux-amd64.tar -C tanzu \
-    && cd tanzu/cli \
-    && install core/${TANZU_CLI_VERSION}/tanzu-core-linux_amd64 /usr/local/bin/tanzu \
-    && tanzu version 
+FROM base as k8sbase
+ENV KUBECTL_VERSION=v1.19.6
 
-# Install Tanzu CLI Plugins
-RUN echo "Installing Tanzu CLI Plugins" \
-    && cd tanzu \
-    && tanzu plugin install --local cli all \
-    && tanzu plugin list
+# Install Kubectl
+RUN echo "Installing Kubectl" \
+    && wget -q https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl \
+    && chmod +x ./kubectl \
+    && mv kubectl /usr/local/bin/kubectl \
+    && which kubectl \
+    && mkdir -p /etc/bash_completion.d \
+    && kubectl completion bash > /etc/bash_completion.d/kubectl \
+    && kubectl version --short --client
 
-# Install Tanzu Extensions
-COPY bin/tkg-extensions-manifests-${TANZU_CLI_VERSION}-vmware.1.tar.gz .
-RUN echo "Installing Tanzu Extensions" \
-    && tar -xzf tkg-extensions-manifests-v1.3.1-vmware.1.tar.gz -C tanzu
+# Install Krew - needed for kubectx and kubens
+RUN echo "Installing Krew" \
+    && set -x; cd "$(mktemp -d)" \
+    && OS="$(uname | tr '[:upper:]' '[:lower:]')" \
+    && ARCH="$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/')" \
+    && KREW="krew-${OS}_${ARCH}" \
+    && curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/${KREW}.tar.gz" \
+    && tar zxvf "${KREW}.tar.gz" \
+    && ./"${KREW}" install krew \
+    && echo "export PATH=${KREW_ROOT:-$HOME/.krew}/bin:$PATH" >> /root/.bashrc
+
+# Install Kubectx - need the PATH here because export above doesnt seem to take in effect yet here?
+RUN echo "Installing kubectx" \
+    && PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH" \
+    && kubectl krew install ctx
+
+# Install Kubens - need the PATH here because export above doesnt seem to take in effect yet here?
+RUN echo "Installing kubens" \
+    && PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH" \
+    kubectl krew install ns
+
+# Create Aliases
+RUN echo "alias k=kubectl" >> /root/.profile \
+    && echo "alias kubectx='kubectl ctx'" >> /root/.profile \
+    && echo "alias kubens='kubectl ns'" >> /root/.profile
+
+FROM k8sbase as clibase
+ENV BAT_VERSION=v0.18.1
+ENV ARGOCD_CLI_VERSION=v1.7.7
+ENV ARGOCD_VERSION=v2.0.1
+ENV KPACK_VERSION=0.5.0
+ENV ISTIO_VERSION=1.7.4
+ENV TKN_VERSION=0.17.2
+ENV KUBESEAL_VERSION=v0.15.0
+
+# Install bat
+RUN echo "Installing bat" \  
+    && curl -L https://github.com/sharkdp/bat/releases/download/${BAT_VERSION}/bat-${BAT_VERSION}-x86_64-unknown-linux-gnu.tar.gz --output bat-${BAT_VERSION}-x86_64-unknown-linux-gnu.tar.gz \
+    && tar -zxvf bat-${BAT_VERSION}-x86_64-unknown-linux-gnu.tar.gz \
+    && mv bat-${BAT_VERSION}-x86_64-unknown-linux-gnu /usr/local/bin/. \
+    && ln -s /usr/local/bin/bat-${BAT_VERSION}-x86_64-unknown-linux-gnu/bat /usr/local/bin/bat
+
+# Install AWS CLI
+RUN echo "Installing AWS CLI" \
+    && pip3 install --upgrade awscli
+
+# Install Carvel tools
+RUN echo "Installing K14s Carvel tools" \
+    && wget -O- https://carvel.dev/install.sh | bash
+
+# Install TMC CLI
+COPY bin/tmc .
+RUN echo "Installing TMC CLI" \
+    && chmod +x tmc \
+    && mv tmc /usr/local/bin/tmc \
+    && which tmc \
+    && tmc version
+
+# Install Kubectl vSphere Plugin
+COPY bin/kubectl-vsphere .
+RUN echo "Installing Kubectl vSphere Plugin" \
+    && mv kubectl-vsphere  /usr/local/bin/kubectl-vsphere  \
+    && chmod +x /usr/local/bin/kubectl-vsphere
 
 # Install Kustomize
 RUN echo "Installing Kustomize" \
@@ -60,18 +113,6 @@ RUN echo "Installing kpack CLI" \
     && which kp \
     && kp version
 
-# Get kpack install yaml install and log utility
-RUN echo "Installing kpack log utility" \
-    && mkdir /opt/kpack \
-    && curl -sSL -o /opt/kpack/logs-v${KPACK_VERSION}-linux.tgz https://github.com/pivotal/kpack/releases/download/v${KPACK_VERSION}/logs-v${KPACK_VERSION}-linux.tgz \
-    && tar -zxvf /opt/kpack/logs-v${KPACK_VERSION}-linux.tgz \
-    && mv logs /usr/local/bin/logs \
-    && chmod +x /usr/local/bin/logs
-
-# Install Carvel tools
-RUN echo "Installing K14s Carvel tools" \
-    && curl -L https://carvel.dev/install.sh | bash
-
 # Install Istioctl
 RUN echo "Installing Istioctl" \
     && curl -L https://istio.io/downloadIstio | ISTIO_VERSION=${ISTIO_VERSION} TARGET_ARCH=x86_64 sh - \
@@ -83,6 +124,12 @@ RUN echo "Installing Istioctl" \
 RUN echo "Installing ArgoCD" \
     && curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/$ARGOCD_VERSION/argocd-linux-amd64 \
     && chmod +x /usr/local/bin/argocd 
+#&& argocd version
+
+# Install Bitnami Sealed Secrets
+RUN echo "Installing Bitnami Sealed Secrets" \
+    && wget https://github.com/bitnami-labs/sealed-secrets/releases/download/$KUBESEAL_VERSION/kubeseal-linux-amd64 -O kubeseal \
+    && install -m 755 kubeseal /usr/local/bin/kubeseal
 
 # Install Tekton CLI
 RUN echo "Installing Tekton CLI" \
@@ -91,42 +138,30 @@ RUN echo "Installing Tekton CLI" \
     && chmod +x /usr/local/bin/tkn \
     && tkn version
 
-# Needed to be able to update PATH and ALIAS
-RUN echo "Creating home bash profile" \
-    && touch $HOME/.bashrc 
+FROM clibase AS tanzucli
+ENV TKG_VERSION=v1.5.4
+ENV TANZU_CLI_VERSION=v0.11.6
 
-# Install Krew - needed for kubectx and kubens
-RUN echo "Installing Krew" \
-    && (set -x; cd "$(mktemp -d)" \
-    && OS="$(uname | tr '[:upper:]' '[:lower:]')" \
-    && ARCH="$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/')" \
-    && curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/krew.tar.gz" \
-    && tar zxvf krew.tar.gz \
-    && KREW=./krew-"${OS}_${ARCH}" \
-    && "$KREW" install krew) \
-&& echo "export PATH=${KREW_ROOT:-$HOME/.krew}/bin:$PATH" >> $HOME/.bashrc
+# Install Tanzu CLI
+COPY bin/tanzu-cli-bundle-${TKG_VERSION}-linux-amd64.tar .
+RUN echo "Installing Tanzu CLI" \
+    && mkdir -p tanzu \
+    && tar xvf tanzu-cli-bundle-${TKG_VERSION}-linux-amd64.tar -C tanzu \
+    && cd tanzu/cli \
+    && install core/${TANZU_CLI_VERSION}/tanzu-core-linux_amd64 /usr/local/bin/tanzu \
+    && tanzu init \
+    && tanzu version 
 
-# Install Kubectx - need the PATH here because export above doesnt seem to take in effect yet here?
-RUN echo "Installing kubectx" \
-    && PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH" \
-    && kubectl krew install ctx
+# Install Tanzu CLI Plugins
+RUN echo "Installing Tanzu CLI Plugins" \
+    && cd tanzu \
+    && tanzu plugin sync \
+    #&& tanzu plugin install --local cli all \
+    && tanzu plugin list
 
-# Install Kubens - need the PATH here because export above doesnt seem to take in effect yet here?
-RUN echo "Installing kubens" \
-    && PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH" \
-    kubectl krew install ns
-
-# Install bat
-RUN echo "Installing bat" \  
-    && curl -L https://github.com/sharkdp/bat/releases/download/v0.18.1/bat-v0.18.1-x86_64-unknown-linux-gnu.tar.gz --output bat-v0.18.1-x86_64-unknown-linux-gnu.tar.gz \
-    && tar -zxvf bat-v0.18.1-x86_64-unknown-linux-gnu.tar.gz \
-    && mv bat-v0.18.1-x86_64-unknown-linux-gnu /usr/local/bin/. \
-    && ln -s /usr/local/bin/bat-v0.18.1-x86_64-unknown-linux-gnu/bat /usr/local/bin/bat
-
-# Create Aliases
-RUN echo "alias k=kubectl" >> $HOME/.bashrc \
-    && echo "alias kubectx='kubectl ctx'" >> $HOME/.bashrc \
-    && echo "alias kubens='kubectl ns'" >> $HOME/.bashrc
+COPY bin/deploy.sh .
+RUN echo "Copying Deploy Script" \
+    && chmod +x deploy.sh
 
 USER 1001
 
@@ -135,3 +170,6 @@ COPY --chown=1001:0 . /home/eduk8s/
 RUN mv workshop /opt/workshop
 
 RUN fix-permissions /home/eduk8s
+
+# Leave Container Running for SSH Access - SHOULD REMOVE
+ENTRYPOINT ["tail", "-f", "/dev/null"]

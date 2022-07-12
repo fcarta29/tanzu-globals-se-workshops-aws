@@ -1,0 +1,10 @@
+apiVersion: training.eduk8s.io/v1alpha1
+kind: TrainingPortal
+metadata:
+  name: tanzu-portal
+spec:
+  portal:
+    password: "VMware1!"
+  workshops:
+  - name: lab-tanzu-env-workshop
+  - name: madeup
