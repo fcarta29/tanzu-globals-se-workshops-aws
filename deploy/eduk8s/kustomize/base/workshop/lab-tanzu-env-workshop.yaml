@@ -6,8 +6,8 @@ metadata:
 spec:
   content:
     files: github.com/fcarta29/tanzu-advanced-poc
-    image: fcarta29/eduk8s-tanzu-workshop:latest
-    #image: harbor.tanzu.frankcarta.com/builders/eduk8s-tanzu-workshop:latest
+    #image: fcarta29/eduk8s-tanzu-workshop:latest
+    image: harbor.tanzu.frankcarta.com/builders/eduk8s-tanzu-workshop:latest
   description: An workshop to explore Tanzu Advanced
   difficulty: intermediate
   duration: 120m
