@@ -6,7 +6,8 @@ metadata:
 spec:
   content:
     files: github.com/fcarta29/tanzu-advanced-poc
-    image: fcarta29/eduk8s-tanzu-workshop:latest
+    #image: fcarta29/eduk8s-tanzu-workshop:latest
+    image: harbor.tanzu.frankcarta.com/builders/eduk8s-tanzu-workshop:latest
   description: An workshop to explore Tanzu Advanced
   difficulty: intermediate
   duration: 120m
@@ -36,6 +37,6 @@ spec:
   tags:
   - containers
   title: Tanzu Globals SE Workshop
+  #url: https://github.com/fcarta29/tanzu-advanced-poc
   url: https://github.com/fcarta29/tanzu-globals-se-workshop
-  #https://github.com/fcarta29/tanzu-advanced-poc
   vendor: eduk8s.io
